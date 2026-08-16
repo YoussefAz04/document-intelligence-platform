@@ -88,6 +88,7 @@ Implemented:
 - Sentence Transformer embeddings with `all-MiniLM-L6-v2`
 - Embedding persistence in pgvector
 - Cosine-similarity semantic search
+- PostgreSQL full-text keyword search with ranked results
 
 Current API endpoints:
 
@@ -97,6 +98,7 @@ GET  /api/documents
 POST /api/documents/upload
 GET  /api/documents/{documentId}/chunks
 GET  /api/search/semantic?query={text}&limit={1-20}
+GET  /api/search/keyword?query={text}&limit={1-20}
 ```
 
 ## Project Structure
@@ -196,15 +198,21 @@ Invoke-RestMethod `
   "http://localhost:8080/api/search/semantic?query=documents%20needed%20for%20international%20MSc&limit=5"
 ```
 
+Keyword search:
+
+```powershell
+Invoke-RestMethod `
+  "http://localhost:8080/api/search/keyword?query=passport%20transcript&limit=5"
+```
+
 ## MVP Roadmap
 
 Next development steps:
 
-1. Add keyword search with PostgreSQL full-text search.
-2. Combine semantic and keyword results into hybrid retrieval.
-3. Generate RAG answers with source citations.
-4. Add page-aware PDF citations.
-5. Build the Angular upload and chat interface.
+1. Combine semantic and keyword results into hybrid retrieval.
+2. Generate RAG answers with source citations.
+3. Add page-aware PDF citations.
+4. Build the Angular upload and chat interface.
 
 ## Enterprise Features Roadmap
 
