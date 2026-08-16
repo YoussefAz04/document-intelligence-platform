@@ -23,17 +23,23 @@ public class DocumentService {
 
     private final DocumentRepository documentRepository;
     private final DocumentChunkRepository documentChunkRepository;
+    private final DocumentChunkEmbeddingRepository documentChunkEmbeddingRepository;
+    private final EmbeddingClient embeddingClient;
     private final TextExtractionService textExtractionService;
     private final TextChunker textChunker;
 
     public DocumentService(
             DocumentRepository documentRepository,
             DocumentChunkRepository documentChunkRepository,
+            DocumentChunkEmbeddingRepository documentChunkEmbeddingRepository,
+            EmbeddingClient embeddingClient,
             TextExtractionService textExtractionService,
             TextChunker textChunker
     ) {
         this.documentRepository = documentRepository;
         this.documentChunkRepository = documentChunkRepository;
+        this.documentChunkEmbeddingRepository = documentChunkEmbeddingRepository;
+        this.embeddingClient = embeddingClient;
         this.textExtractionService = textExtractionService;
         this.textChunker = textChunker;
     }
@@ -59,7 +65,9 @@ public class DocumentService {
                 .mapToObj(index -> new DocumentChunk(document, index, null, chunkContents.get(index)))
                 .toList();
 
-        documentChunkRepository.saveAll(chunks);
+        documentChunkRepository.saveAllAndFlush(chunks);
+        List<List<Double>> embeddings = embeddingClient.createEmbeddings(chunkContents);
+        documentChunkEmbeddingRepository.updateEmbeddings(chunks, embeddings);
         document.markProcessed();
 
         return DocumentResponse.from(document, chunks.size());

@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.Map;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -23,6 +24,12 @@ public class ApiExceptionHandler {
     @ResponseStatus(HttpStatus.PAYLOAD_TOO_LARGE)
     public Map<String, Object> handleMaxUploadSizeExceeded() {
         return error(HttpStatus.PAYLOAD_TOO_LARGE, "Uploaded file is too large.");
+    }
+
+    @ExceptionHandler(AiServiceException.class)
+    public ResponseEntity<Map<String, Object>> handleAiService(AiServiceException exception) {
+        HttpStatus status = HttpStatus.SERVICE_UNAVAILABLE;
+        return ResponseEntity.status(status).body(error(status, exception.getMessage()));
     }
 
     private Map<String, Object> error(HttpStatus status, String message) {

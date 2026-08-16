@@ -17,5 +17,24 @@ services:
       timeout: 5s
       retries: 5
 
+  ai-service:
+    build:
+      context: ./ai-service
+    container_name: docintel-ai-service
+    environment:
+      EMBEDDING_MODEL: sentence-transformers/all-MiniLM-L6-v2
+      EMBEDDING_DIMENSION: 384
+    ports:
+      - "8000:8000"
+    volumes:
+      - huggingface_cache:/root/.cache/huggingface
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
 volumes:
   docintel_pgdata:
+  huggingface_cache:

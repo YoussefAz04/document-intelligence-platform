@@ -15,9 +15,10 @@ backend/.mvn/wrapper/maven-wrapper.jar
 
 # Python
 ai-service/.venv/
-ai-service/__pycache__/
+ai-service/**/__pycache__/
 ai-service/.pytest_cache/
 ai-service/*.egg-info/
+*.pyc
 
 # Angular / Node
 frontend/node_modules/

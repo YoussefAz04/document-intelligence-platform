@@ -84,6 +84,10 @@ Implemented:
 - Text extraction with Apache Tika
 - Automatic text chunking on upload
 - Chunk persistence in PostgreSQL
+- FastAPI embedding service
+- Sentence Transformer embeddings with `all-MiniLM-L6-v2`
+- Embedding persistence in pgvector
+- Cosine-similarity semantic search
 
 Current API endpoints:
 
@@ -92,6 +96,7 @@ GET  /api/health
 GET  /api/documents
 POST /api/documents/upload
 GET  /api/documents/{documentId}/chunks
+GET  /api/search/semantic?query={text}&limit={1-20}
 ```
 
 ## Project Structure
@@ -111,11 +116,14 @@ document-intelligence-platform/
 
 The project uses PostgreSQL with the `pgvector` extension.
 
-Start the database:
+Start PostgreSQL and the AI service:
 
 ```bash
-docker compose up -d postgres
+docker compose up -d postgres ai-service
 ```
+
+The first embedding request downloads the model into a persistent Docker
+volume. Open the AI service Swagger UI at <http://localhost:8000/docs>.
 
 Connection details:
 
@@ -163,17 +171,16 @@ Invoke-RestMethod http://localhost:8080/api/health
 
 ## Upload A Document
 
-PowerShell example:
+Windows PowerShell 5.1 does not support `Invoke-RestMethod -Form`, so use
+`curl.exe` for multipart upload:
 
 ```powershell
-$form = @{
-  file = Get-Item "C:\Users\azzou\Downloads\document-intelligence-platform\sample-documents\demo-handbook.txt"
-}
+$response = curl.exe -s -X POST `
+  "http://localhost:8080/api/documents/upload" `
+  -F "file=@C:\Users\azzou\Downloads\document-intelligence-platform\sample-documents\demo-handbook.txt"
 
-Invoke-RestMethod `
-  -Uri "http://localhost:8080/api/documents/upload" `
-  -Method Post `
-  -Form $form
+$uploaded = $response | ConvertFrom-Json
+$uploaded
 ```
 
 List uploaded documents:
@@ -182,18 +189,22 @@ List uploaded documents:
 Invoke-RestMethod http://localhost:8080/api/documents
 ```
 
+Semantic search:
+
+```powershell
+Invoke-RestMethod `
+  "http://localhost:8080/api/search/semantic?query=documents%20needed%20for%20international%20MSc&limit=5"
+```
+
 ## MVP Roadmap
 
 Next development steps:
 
-1. Generate embeddings with a Python FastAPI service.
-2. Store embeddings in PostgreSQL using pgvector.
-3. Implement semantic search.
-4. Add keyword search with PostgreSQL full-text search.
-5. Combine both into hybrid retrieval.
-6. Generate RAG answers with source citations.
-7. Add page-aware PDF citations.
-8. Build the Angular upload and chat interface.
+1. Add keyword search with PostgreSQL full-text search.
+2. Combine semantic and keyword results into hybrid retrieval.
+3. Generate RAG answers with source citations.
+4. Add page-aware PDF citations.
+5. Build the Angular upload and chat interface.
 
 ## Enterprise Features Roadmap
 
