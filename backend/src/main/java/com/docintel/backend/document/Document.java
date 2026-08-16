@@ -39,6 +39,7 @@ public class Document {
         this.originalFilename = originalFilename;
         this.contentType = contentType;
         this.status = DocumentStatus.UPLOADED;
+        this.createdAt = Instant.now();
     }
 
     @PrePersist
@@ -62,6 +63,18 @@ public class Document {
 
     public DocumentStatus getStatus() {
         return status;
+    }
+
+    public void markProcessing() {
+        this.status = DocumentStatus.PROCESSING;
+    }
+
+    public void markProcessed() {
+        this.status = DocumentStatus.PROCESSED;
+    }
+
+    public void markFailed() {
+        this.status = DocumentStatus.FAILED;
     }
 
     public Instant getCreatedAt() {

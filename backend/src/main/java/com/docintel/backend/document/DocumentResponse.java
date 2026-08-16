@@ -8,15 +8,21 @@ public record DocumentResponse(
         String originalFilename,
         String contentType,
         DocumentStatus status,
-        Instant createdAt
+        Instant createdAt,
+        long chunkCount
 ) {
     public static DocumentResponse from(Document document) {
+        return from(document, 0);
+    }
+
+    public static DocumentResponse from(Document document, long chunkCount) {
         return new DocumentResponse(
                 document.getId(),
                 document.getOriginalFilename(),
                 document.getContentType(),
                 document.getStatus(),
-                document.getCreatedAt()
+                document.getCreatedAt(),
+                chunkCount
         );
     }
 }

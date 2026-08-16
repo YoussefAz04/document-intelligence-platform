@@ -81,6 +81,9 @@ Implemented:
 - Document metadata upload endpoint
 - Document listing endpoint
 - Basic upload validation for PDF, DOCX, and TXT
+- Text extraction with Apache Tika
+- Automatic text chunking on upload
+- Chunk persistence in PostgreSQL
 
 Current API endpoints:
 
@@ -88,6 +91,7 @@ Current API endpoints:
 GET  /api/health
 GET  /api/documents
 POST /api/documents/upload
+GET  /api/documents/{documentId}/chunks
 ```
 
 ## Project Structure
@@ -182,16 +186,14 @@ Invoke-RestMethod http://localhost:8080/api/documents
 
 Next development steps:
 
-1. Extract text from uploaded PDF, DOCX, and TXT files.
-2. Split extracted text into page-aware chunks.
-3. Store chunks in `document_chunks`.
-4. Generate embeddings with a Python FastAPI service.
-5. Store embeddings in PostgreSQL using pgvector.
-6. Implement semantic search.
-7. Add keyword search with PostgreSQL full-text search.
-8. Combine both into hybrid retrieval.
-9. Generate RAG answers with source citations.
-10. Build the Angular upload and chat interface.
+1. Generate embeddings with a Python FastAPI service.
+2. Store embeddings in PostgreSQL using pgvector.
+3. Implement semantic search.
+4. Add keyword search with PostgreSQL full-text search.
+5. Combine both into hybrid retrieval.
+6. Generate RAG answers with source citations.
+7. Add page-aware PDF citations.
+8. Build the Angular upload and chat interface.
 
 ## Enterprise Features Roadmap
 

@@ -3,6 +3,8 @@ package com.docintel.backend.document;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.UUID;
+import java.util.stream.IntStream;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,9 +22,20 @@ public class DocumentService {
     private static final Set<String> ALLOWED_EXTENSIONS = Set.of("pdf", "docx", "txt");
 
     private final DocumentRepository documentRepository;
+    private final DocumentChunkRepository documentChunkRepository;
+    private final TextExtractionService textExtractionService;
+    private final TextChunker textChunker;
 
-    public DocumentService(DocumentRepository documentRepository) {
+    public DocumentService(
+            DocumentRepository documentRepository,
+            DocumentChunkRepository documentChunkRepository,
+            TextExtractionService textExtractionService,
+            TextChunker textChunker
+    ) {
         this.documentRepository = documentRepository;
+        this.documentChunkRepository = documentChunkRepository;
+        this.textExtractionService = textExtractionService;
+        this.textChunker = textChunker;
     }
 
     @Transactional
@@ -32,15 +45,43 @@ public class DocumentService {
         String filename = cleanFilename(file.getOriginalFilename());
         String contentType = resolveContentType(file, filename);
         Document document = new Document(filename, contentType);
+        document.markProcessing();
+        documentRepository.save(document);
 
-        return DocumentResponse.from(documentRepository.save(document));
+        String extractedText = textExtractionService.extractText(file);
+        List<String> chunkContents = textChunker.chunk(extractedText);
+        if (chunkContents.isEmpty()) {
+            document.markFailed();
+            throw new IllegalArgumentException("No readable text could be extracted from the uploaded document.");
+        }
+
+        List<DocumentChunk> chunks = IntStream.range(0, chunkContents.size())
+                .mapToObj(index -> new DocumentChunk(document, index, null, chunkContents.get(index)))
+                .toList();
+
+        documentChunkRepository.saveAll(chunks);
+        document.markProcessed();
+
+        return DocumentResponse.from(document, chunks.size());
     }
 
     @Transactional(readOnly = true)
     public List<DocumentResponse> findAll() {
         return documentRepository.findAll()
                 .stream()
-                .map(DocumentResponse::from)
+                .map(document -> DocumentResponse.from(document, documentChunkRepository.countByDocumentId(document.getId())))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<DocumentChunkResponse> findChunks(UUID documentId) {
+        if (!documentRepository.existsById(documentId)) {
+            throw new IllegalArgumentException("Document not found.");
+        }
+
+        return documentChunkRepository.findByDocumentIdOrderByChunkIndex(documentId)
+                .stream()
+                .map(DocumentChunkResponse::from)
                 .toList();
     }
 
