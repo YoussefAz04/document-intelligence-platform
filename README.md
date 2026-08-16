@@ -89,6 +89,7 @@ Implemented:
 - Embedding persistence in pgvector
 - Cosine-similarity semantic search
 - PostgreSQL full-text keyword search with ranked results
+- Hybrid retrieval using Reciprocal Rank Fusion
 
 Current API endpoints:
 
@@ -99,6 +100,7 @@ POST /api/documents/upload
 GET  /api/documents/{documentId}/chunks
 GET  /api/search/semantic?query={text}&limit={1-20}
 GET  /api/search/keyword?query={text}&limit={1-20}
+GET  /api/search/hybrid?query={text}&limit={1-20}
 ```
 
 ## Project Structure
@@ -205,14 +207,22 @@ Invoke-RestMethod `
   "http://localhost:8080/api/search/keyword?query=passport%20transcript&limit=5"
 ```
 
+Hybrid search combines semantic and keyword rankings with Reciprocal Rank
+Fusion. Each result includes the original scores and indicates whether it was
+found by `SEMANTIC`, `KEYWORD`, or `BOTH` retrieval methods.
+
+```powershell
+Invoke-RestMethod `
+  "http://localhost:8080/api/search/hybrid?query=passport%20transcript&limit=5"
+```
+
 ## MVP Roadmap
 
 Next development steps:
 
-1. Combine semantic and keyword results into hybrid retrieval.
-2. Generate RAG answers with source citations.
-3. Add page-aware PDF citations.
-4. Build the Angular upload and chat interface.
+1. Generate RAG answers with source citations.
+2. Add page-aware PDF citations.
+3. Build the Angular upload and chat interface.
 
 ## Enterprise Features Roadmap
 
