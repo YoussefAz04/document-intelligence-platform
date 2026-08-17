@@ -1,10 +1,10 @@
 package com.docintel.backend.document;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
-import java.util.stream.IntStream;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -54,18 +54,27 @@ public class DocumentService {
         document.markProcessing();
         documentRepository.save(document);
 
-        String extractedText = textExtractionService.extractText(file);
-        List<String> chunkContents = textChunker.chunk(extractedText);
-        if (chunkContents.isEmpty()) {
+        List<PendingChunk> pendingChunks = textExtractionService.extract(file, contentType)
+                .stream()
+                .flatMap(page -> textChunker.chunk(page.content())
+                        .stream()
+                        .map(content -> new PendingChunk(page.pageNumber(), content)))
+                .toList();
+        if (pendingChunks.isEmpty()) {
             document.markFailed();
             throw new IllegalArgumentException("No readable text could be extracted from the uploaded document.");
         }
 
-        List<DocumentChunk> chunks = IntStream.range(0, chunkContents.size())
-                .mapToObj(index -> new DocumentChunk(document, index, null, chunkContents.get(index)))
-                .toList();
+        List<DocumentChunk> chunks = new ArrayList<>(pendingChunks.size());
+        for (int index = 0; index < pendingChunks.size(); index++) {
+            PendingChunk pendingChunk = pendingChunks.get(index);
+            chunks.add(new DocumentChunk(document, index, pendingChunk.pageNumber(), pendingChunk.content()));
+        }
 
         documentChunkRepository.saveAllAndFlush(chunks);
+        List<String> chunkContents = pendingChunks.stream()
+                .map(PendingChunk::content)
+                .toList();
         List<List<Double>> embeddings = embeddingClient.createEmbeddings(chunkContents);
         documentChunkEmbeddingRepository.updateEmbeddings(chunks, embeddings);
         document.markProcessed();
@@ -145,5 +154,8 @@ public class DocumentService {
 
         String normalizedFilename = originalFilename.replace("\\", "/");
         return normalizedFilename.substring(normalizedFilename.lastIndexOf('/') + 1);
+    }
+
+    private record PendingChunk(Integer pageNumber, String content) {
     }
 }

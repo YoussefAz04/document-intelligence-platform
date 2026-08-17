@@ -91,6 +91,7 @@ Implemented:
 - PostgreSQL full-text keyword search with ranked results
 - Hybrid retrieval using Reciprocal Rank Fusion
 - RAG question answering with structured source citations
+- Page-aware PDF extraction and citations
 
 Current API endpoints:
 
@@ -267,8 +268,8 @@ contains the corresponding filename, page number, chunk ID, and source text.
 
 Next development steps:
 
-1. Add page-aware PDF citations.
-2. Build the Angular upload and chat interface.
+1. Build the Angular upload and chat interface.
+2. Add document deletion and re-indexing.
 
 ## Enterprise Features Roadmap
 
