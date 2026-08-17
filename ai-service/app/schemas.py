@@ -26,3 +26,31 @@ class HealthResponse(BaseModel):
     service: str
     model: str
     model_loaded: bool
+    generation_provider: str
+    generation_model: str
+    generation_configured: bool
+
+
+class ContextSource(BaseModel):
+    sourceId: str = Field(pattern=r"^S[1-9][0-9]*$")
+    filename: str = Field(min_length=1, max_length=500)
+    pageNumber: int | None = Field(default=None, ge=1)
+    content: str = Field(min_length=1, max_length=10_000)
+
+
+class GenerationRequest(BaseModel):
+    question: str = Field(min_length=1, max_length=2_000)
+    sources: list[ContextSource] = Field(min_length=1, max_length=10)
+
+    @field_validator("question")
+    @classmethod
+    def clean_question(cls, question: str) -> str:
+        question = question.strip()
+        if not question:
+            raise ValueError("Question must not be blank.")
+        return question
+
+
+class GenerationResponse(BaseModel):
+    model: str
+    answer: str

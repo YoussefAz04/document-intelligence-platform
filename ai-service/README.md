@@ -1,8 +1,8 @@
 # AI Service
 
-FastAPI service that turns text into normalized 384-dimensional vectors. The
-Spring Boot backend will store these vectors in PostgreSQL with pgvector and use
-them for semantic retrieval.
+FastAPI service that creates normalized 384-dimensional vectors and generates
+grounded answers from retrieved document excerpts. The Spring Boot backend
+stores embeddings in pgvector and owns retrieval and citation metadata.
 
 ## API
 
@@ -10,6 +10,7 @@ them for semantic retrieval.
 | --- | --- | --- |
 | `GET` | `/api/health` | Service and model status |
 | `POST` | `/api/embeddings` | Generate embeddings for up to 64 texts |
+| `POST` | `/api/generate` | Generate an answer from labeled source excerpts |
 | `GET` | `/docs` | Interactive Swagger UI |
 
 The model is loaded lazily on the first embedding request. That first request
@@ -51,6 +52,38 @@ $result.embeddings.Count
 ```
 
 Expected values are `384` and `2`.
+
+## Answer generation with Ollama
+
+For a free local setup, install Ollama on Windows and pull a model:
+
+```powershell
+ollama pull llama3.2
+```
+
+Then use this in the project-root `.env` file:
+
+```text
+OPENAI_API_KEY=
+GENERATION_PROVIDER=ollama
+OLLAMA_BASE_URL=http://host.docker.internal:11434
+OLLAMA_MODEL=llama3.2
+GENERATION_MODEL=llama3.2
+```
+
+Recreate the service after changing `.env`:
+
+```powershell
+docker compose up -d --force-recreate ai-service
+```
+
+Inside Docker, `host.docker.internal` lets FastAPI call the Ollama app running
+on Windows. The generation prompt requires inline source labels and instructs
+the model to use only the supplied excerpts.
+
+OpenAI can be used later by setting `GENERATION_PROVIDER=openai`,
+`OPENAI_API_KEY`, and an OpenAI generation model. API keys must never be
+committed.
 
 ## Run locally
 

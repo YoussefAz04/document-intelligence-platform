@@ -90,6 +90,7 @@ Implemented:
 - Cosine-similarity semantic search
 - PostgreSQL full-text keyword search with ranked results
 - Hybrid retrieval using Reciprocal Rank Fusion
+- RAG question answering with structured source citations
 
 Current API endpoints:
 
@@ -101,6 +102,7 @@ GET  /api/documents/{documentId}/chunks
 GET  /api/search/semantic?query={text}&limit={1-20}
 GET  /api/search/keyword?query={text}&limit={1-20}
 GET  /api/search/hybrid?query={text}&limit={1-20}
+POST /api/rag/ask
 ```
 
 ## Project Structure
@@ -128,6 +130,33 @@ docker compose up -d postgres ai-service
 
 The first embedding request downloads the model into a persistent Docker
 volume. Open the AI service Swagger UI at <http://localhost:8000/docs>.
+
+For free local answer generation, install Ollama, pull a small chat model, and
+run the AI service with the Ollama provider:
+
+```powershell
+ollama pull llama3.2
+```
+
+Project-root `.env`:
+
+```text
+OPENAI_API_KEY=
+GENERATION_PROVIDER=ollama
+OLLAMA_BASE_URL=http://host.docker.internal:11434
+OLLAMA_MODEL=llama3.2
+GENERATION_MODEL=llama3.2
+```
+
+The `.env` file is ignored by Git and must never be committed. Recreate the AI
+container after changing environment variables:
+
+```bash
+docker compose up -d --force-recreate ai-service
+```
+
+OpenAI can still be used later by setting `GENERATION_PROVIDER=openai`,
+`OPENAI_API_KEY`, and an OpenAI generation model. Do not commit real API keys.
 
 Connection details:
 
@@ -216,13 +245,30 @@ Invoke-RestMethod `
   "http://localhost:8080/api/search/hybrid?query=passport%20transcript&limit=5"
 ```
 
+Ask a grounded RAG question:
+
+```powershell
+$body = @{
+  question = "What documents does an international MSc student need?"
+  limit = 5
+} | ConvertTo-Json
+
+Invoke-RestMethod `
+  -Uri "http://localhost:8080/api/rag/ask" `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body $body
+```
+
+The answer uses inline labels such as `[S1]`. The `citations` response field
+contains the corresponding filename, page number, chunk ID, and source text.
+
 ## MVP Roadmap
 
 Next development steps:
 
-1. Generate RAG answers with source citations.
-2. Add page-aware PDF citations.
-3. Build the Angular upload and chat interface.
+1. Add page-aware PDF citations.
+2. Build the Angular upload and chat interface.
 
 ## Enterprise Features Roadmap
 
