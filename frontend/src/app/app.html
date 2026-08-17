@@ -1,0 +1,275 @@
+<div class="app-shell">
+  <header class="topbar">
+    <button class="topbar__icon-button mobile-menu" type="button" aria-label="Open navigation" title="Open navigation" (click)="toggleNavigation()">
+      <app-carbon-icon name="menu" [size]="20" />
+    </button>
+    <button class="brand" type="button" (click)="setView('chat')">
+      <span class="brand__mark">DI</span>
+      <span class="brand__name"><strong>Document</strong> Intelligence</span>
+    </button>
+    <div class="topbar__context">University workspace</div>
+    <div class="topbar__actions">
+      <span class="environment-label">LOCAL</span>
+      <button class="topbar__icon-button" type="button" aria-label="Settings" title="Settings">
+        <app-carbon-icon name="settings" [size]="20" />
+      </button>
+      <button class="topbar__icon-button" type="button" aria-label="User profile" title="User profile">
+        <app-carbon-icon name="user" [size]="20" />
+      </button>
+    </div>
+  </header>
+
+  <aside class="side-nav" [class.side-nav--open]="navigationOpen()">
+    <nav aria-label="Primary navigation">
+      <button class="nav-item" [class.nav-item--active]="activeView() === 'chat'" type="button" (click)="setView('chat')">
+        <app-carbon-icon name="chat" [size]="20" />
+        <span>Ask documents</span>
+      </button>
+      <button class="nav-item" [class.nav-item--active]="activeView() === 'documents'" type="button" (click)="setView('documents')">
+        <app-carbon-icon name="document" [size]="20" />
+        <span>Documents</span>
+        <span class="nav-count">{{ documents().length }}</span>
+      </button>
+    </nav>
+    <div class="side-nav__status">
+      <span class="status-dot" [class.status-dot--offline]="!backendOnline()"></span>
+      <div>
+        <strong>{{ backendOnline() ? 'Backend online' : 'Backend unavailable' }}</strong>
+        <span>Spring Boot + Ollama</span>
+      </div>
+    </div>
+  </aside>
+
+  @if (navigationOpen()) {
+    <button class="nav-backdrop" type="button" aria-label="Close navigation" (click)="toggleNavigation()"></button>
+  }
+
+  <main id="main-content" class="main-content">
+    @if (activeView() === 'chat') {
+      <section class="page-heading">
+        <div>
+          <p class="eyebrow">University workspace</p>
+          <h1>Knowledge workspace</h1>
+          <p class="page-heading__summary">Search and verify answers across your institutional knowledge base.</p>
+        </div>
+        <div class="page-heading__actions">
+          <span class="workspace-state"><span class="status-dot" [class.status-dot--offline]="!backendOnline()"></span>{{ backendOnline() ? 'Systems operational' : 'Backend offline' }}</span>
+          <button class="cds--btn cds--btn--primary primary-action" type="button" (click)="openFilePicker()">
+            <span>Add document</span>
+            <app-carbon-icon class="cds--btn__icon" name="add" [size]="16" />
+          </button>
+        </div>
+        <input #fileInput class="visually-hidden" type="file" accept=".pdf,.docx,.txt" (change)="onFileSelected($event)" />
+      </section>
+
+      <section class="metric-strip" aria-label="Workspace status">
+        <div class="metric metric--documents">
+          <div class="metric__header"><span class="metric__label">Indexed documents</span><app-carbon-icon name="document--multiple" [size]="20" /></div>
+          <div class="metric__value"><strong>{{ indexedDocumentCount() }}</strong><span>ready for retrieval</span></div>
+        </div>
+        <div class="metric metric--chunks">
+          <div class="metric__header"><span class="metric__label">Knowledge chunks</span><app-carbon-icon name="data--base" [size]="20" /></div>
+          <div class="metric__value"><strong>{{ indexedChunkCount() }}</strong><span>searchable passages</span></div>
+        </div>
+        <div class="metric metric--model">
+          <div class="metric__header"><span class="metric__label">Answer model</span><app-carbon-icon name="ai" [size]="20" /></div>
+          <div class="metric__value"><strong>{{ currentModel() }}</strong><span>running locally</span></div>
+        </div>
+        <div class="metric metric--quality">
+          <div class="metric__header"><span class="metric__label">Helpful answers</span><app-carbon-icon name="thumbs-up" [size]="20" /></div>
+          <div class="metric__value"><strong>{{ helpfulRateLabel() }}</strong><span>{{ ragStats().ratedAnswers }} of {{ ragStats().totalAnswers }} rated</span></div>
+        </div>
+      </section>
+
+      @if (notice()) {
+        <div class="inline-notice" [class.inline-notice--error]="notice()?.type === 'error'" role="status">
+          @if (notice()?.type === 'error') {
+            <app-carbon-icon name="warning--alt" [size]="20" />
+          } @else {
+            <app-carbon-icon name="checkmark--filled" [size]="20" />
+          }
+          <div><strong>{{ notice()?.title }}</strong><span>{{ notice()?.message }}</span></div>
+          <button type="button" aria-label="Dismiss notification" title="Dismiss" (click)="dismissNotice()"><app-carbon-icon name="close" [size]="16" /></button>
+        </div>
+      }
+
+      <section class="workspace-grid">
+        <div class="chat-workspace">
+          <header class="panel-header">
+            <div><h2>Ask documents</h2><span>Grounded answers with page-aware citations</span></div>
+            <button class="icon-action" type="button" aria-label="Clear conversation" title="Clear conversation" (click)="clearConversation()">
+              <app-carbon-icon name="renew" [size]="16" />
+            </button>
+          </header>
+
+          <div class="retrieval-strip" aria-label="Retrieval configuration">
+            <span><app-carbon-icon name="search" [size]="16" /> Hybrid retrieval</span>
+            <span>Up to 5 sources</span>
+            <span><span class="status-dot"></span> Local model</span>
+          </div>
+
+          <div class="conversation" aria-live="polite">
+            @if (isWelcomeState()) {
+              <div class="welcome-state">
+                <div class="welcome-state__mark"><app-carbon-icon name="ai" [size]="24" /></div>
+                <p class="eyebrow">Document Intelligence</p>
+                <h2>What would you like to find?</h2>
+                <p>Ask a question and receive an answer grounded in your indexed documents.</p>
+                <div class="suggested-questions" aria-label="Suggested questions">
+                  @for (suggestion of suggestedQuestions; track suggestion) {
+                    <button type="button" (click)="useSuggestion(suggestion)">
+                      <span>{{ suggestion }}</span><app-carbon-icon name="arrow--right" [size]="16" />
+                    </button>
+                  }
+                </div>
+              </div>
+            } @else {
+              @for (message of messages(); track message.id) {
+                <article class="message" [class.message--user]="message.role === 'user'">
+                  <div class="message__identity" [class.message__identity--user]="message.role === 'user'">
+                    @if (message.role === 'user') { <span>Y</span> } @else { <app-carbon-icon name="ai" [size]="16" /> }
+                  </div>
+                  <div class="message__body">
+                    <div class="message__label">
+                      <span>{{ message.role === 'user' ? 'You' : 'Document Intelligence' }}</span>
+                      @if (message.model) { <span class="model-label">{{ message.model }}</span> }
+                    </div>
+                    <div class="message__content">
+                      @for (line of answerLines(message.content); track $index) {
+                        @if (line.kind === 'bullet') {
+                          <div class="answer-line answer-line--bullet"><span></span><p>{{ line.text }}</p></div>
+                        } @else {
+                          <p class="answer-line">{{ line.text }}</p>
+                        }
+                      }
+                    </div>
+                    @if (message.telemetry; as telemetry) {
+                      <div class="answer-telemetry" aria-label="Answer quality information">
+                        <span class="confidence-tag" [class.confidence-tag--high]="telemetry.confidence === 'HIGH'" [class.confidence-tag--low]="telemetry.confidence === 'LOW'">{{ confidenceLabel(telemetry.confidence) }}</span>
+                        <span><strong>{{ formatLatency(telemetry.totalDurationMs) }}</strong> total</span>
+                        <span><strong>{{ telemetry.citedSourceCount }}/{{ telemetry.retrievedSourceCount }}</strong> sources cited</span>
+                        <span><strong>{{ formatLatency(telemetry.retrievalDurationMs) }}</strong> retrieval</span>
+                      </div>
+                    }
+                    @if (message.citations?.length) {
+                      <div class="message__sources">
+                        @for (citation of message.citations; track citation.sourceId) {
+                          <button type="button" [class.message__source--active]="selectedCitation()?.chunkId === citation.chunkId" (click)="selectCitation(citation)">
+                            <span>{{ citation.sourceId }}</span>{{ citation.filename }}
+                            @if (citation.pageNumber) { <strong>p. {{ citation.pageNumber }}</strong> }
+                          </button>
+                        }
+                      </div>
+                    }
+                    @if (message.interactionId) {
+                      <div class="answer-feedback">
+                        <span>{{ message.feedback ? 'Feedback saved' : 'Was this answer useful?' }}</span>
+                        <div>
+                          <button type="button" [class.answer-feedback__button--selected]="message.feedback === 'HELPFUL'" [disabled]="message.feedbackSaving" aria-label="Mark answer as helpful" title="Helpful" (click)="rateAnswer(message, 'HELPFUL')">
+                            <app-carbon-icon [name]="message.feedback === 'HELPFUL' ? 'thumbs-up--filled' : 'thumbs-up'" [size]="16" />
+                          </button>
+                          <button type="button" [class.answer-feedback__button--selected]="message.feedback === 'NOT_HELPFUL'" [disabled]="message.feedbackSaving" aria-label="Mark answer as not helpful" title="Not helpful" (click)="rateAnswer(message, 'NOT_HELPFUL')">
+                            <app-carbon-icon [name]="message.feedback === 'NOT_HELPFUL' ? 'thumbs-down--filled' : 'thumbs-down'" [size]="16" />
+                          </button>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                </article>
+              }
+            }
+            @if (asking()) {
+              <article class="message">
+                <div class="message__identity"><app-carbon-icon name="ai" [size]="16" /></div>
+                <div class="message__body"><div class="message__label">Document Intelligence</div><div class="loading-line" role="status"><span class="loading-spinner"></span><span>Searching indexed documents</span></div></div>
+              </article>
+            }
+          </div>
+
+          <form class="composer" (ngSubmit)="askQuestion()">
+            <label for="question">Question</label>
+            <div class="composer__control">
+              <textarea id="question" name="question" rows="2" maxlength="2000" placeholder="Ask about admissions, scholarships, policies, or deadlines" [(ngModel)]="question" [disabled]="asking()" (keydown.control.enter)="askQuestion()"></textarea>
+              <button class="send-button" type="submit" [disabled]="asking() || !question.trim()" aria-label="Send question" title="Send question">
+                <app-carbon-icon name="send" [size]="20" />
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <aside class="source-panel" aria-label="Source details">
+          <header class="panel-header source-panel__header"><div><h2>Source evidence</h2><span>{{ selectedCitation() ? 'Retrieved passage ' + selectedCitation()?.sourceId : 'Select a citation to inspect it' }}</span></div><app-carbon-icon name="document" [size]="20" /></header>
+          @if (selectedCitation(); as citation) {
+            <div class="source-title"><span class="source-id">{{ citation.sourceId }}</span><div><span>Referenced document</span><strong>{{ citation.filename }}</strong></div></div>
+            <div class="source-meta">
+              <div><span>Location</span><strong>{{ citation.pageNumber ? 'Page ' + citation.pageNumber : 'Chunk ' + (citation.chunkIndex + 1) }}</strong></div>
+              <div><span>Matched by</span><strong>{{ citation.matchedBy === 'BOTH' ? 'Hybrid' : (citation.matchedBy === 'SEMANTIC' ? 'Semantic' : 'Keyword') }}</strong></div>
+            </div>
+            <div class="source-quality">
+              <div><span>Semantic relevance</span><strong>{{ citation.semanticScore === null ? 'Not available' : semanticPercent(citation.semanticScore) + '%' }}</strong></div>
+              <div class="relevance-track" aria-hidden="true"><span [style.width.%]="citation.semanticScore === null ? 0 : semanticPercent(citation.semanticScore)"></span></div>
+              <p>{{ citation.matchedBy === 'BOTH' ? 'This passage matched both meaning and exact terminology.' : citation.matchedBy === 'SEMANTIC' ? 'This passage matched the meaning of the question.' : 'This passage matched exact terms in the question.' }}</p>
+            </div>
+            <div class="source-excerpt"><span class="source-excerpt__label">Extracted text</span><p>{{ citation.content }}</p></div>
+          } @else {
+            <div class="source-empty"><div class="source-empty__icon"><app-carbon-icon name="document" [size]="24" /></div><h3>No source selected</h3><p>Citations from generated answers will appear here for review.</p></div>
+          }
+        </aside>
+      </section>
+    } @else {
+      <section class="page-heading">
+        <div><p class="eyebrow">Content library</p><h1>Documents</h1></div>
+        <button class="cds--btn cds--btn--primary primary-action" type="button" (click)="openFilePicker()"><span>Upload</span><app-carbon-icon class="cds--btn__icon" name="upload" [size]="16" /></button>
+        <input #fileInput class="visually-hidden" type="file" accept=".pdf,.docx,.txt" (change)="onFileSelected($event)" />
+      </section>
+
+      @if (notice()) {
+        <div class="inline-notice" [class.inline-notice--error]="notice()?.type === 'error'" role="status">
+          @if (notice()?.type === 'error') {
+            <app-carbon-icon name="warning--alt" [size]="20" />
+          } @else {
+            <app-carbon-icon name="checkmark--filled" [size]="20" />
+          }
+          <div><strong>{{ notice()?.title }}</strong><span>{{ notice()?.message }}</span></div>
+          <button type="button" aria-label="Dismiss notification" title="Dismiss" (click)="dismissNotice()"><app-carbon-icon name="close" [size]="16" /></button>
+        </div>
+      }
+
+      <section class="upload-band" (dragover)="onDragOver($event)" (drop)="onDrop($event)">
+        <div class="upload-band__icon"><app-carbon-icon name="upload" [size]="24" /></div>
+        <div><h2>Upload document</h2><p>PDF, DOCX, or TXT</p></div>
+        <button class="cds--btn cds--btn--tertiary secondary-action" type="button" [disabled]="uploading()" (click)="openFilePicker()"><span>Choose file</span><app-carbon-icon class="cds--btn__icon" name="arrow--right" [size]="16" /></button>
+        @if (uploading()) { <div class="loading-line" role="status"><span class="loading-spinner"></span><span>Processing document</span></div> }
+      </section>
+
+      <section class="document-library">
+        <header class="panel-header">
+          <div><h2>Indexed documents</h2><span>{{ documents().length }} total</span></div>
+          <button class="icon-action" type="button" aria-label="Refresh documents" title="Refresh documents" (click)="loadDocuments()"><app-carbon-icon name="renew" [size]="16" /></button>
+        </header>
+        @if (loadingDocuments()) {
+          <div class="table-loading"><div class="loading-spinner loading-spinner--large" role="status" aria-label="Loading documents"></div></div>
+        } @else if (documents().length) {
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th>Document</th><th>Type</th><th>Status</th><th>Chunks</th><th>Uploaded</th></tr></thead>
+              <tbody>
+                @for (document of documents(); track document.id) {
+                  <tr>
+                    <td><div class="document-name"><app-carbon-icon name="document" [size]="20" /><span>{{ document.originalFilename }}</span></div></td>
+                    <td>{{ fileType(document.contentType) }}</td>
+                    <td><span class="status-tag" [class.status-tag--failed]="document.status === 'FAILED'" [class.status-tag--pending]="document.status !== 'PROCESSED' && document.status !== 'FAILED'">{{ document.status }}</span></td>
+                    <td>{{ document.chunkCount }}</td>
+                    <td>{{ document.createdAt | date: 'medium' }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        } @else {
+          <div class="document-empty"><app-carbon-icon name="document" [size]="20" /><h3>No documents indexed</h3></div>
+        }
+      </section>
+    }
+  </main>
+</div>

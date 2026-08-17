@@ -2,6 +2,7 @@ package com.docintel.backend.document;
 
 import java.time.Instant;
 import java.util.Map;
+import java.util.NoSuchElementException;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -18,6 +19,12 @@ public class ApiExceptionHandler {
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public Map<String, Object> handleBadRequest(IllegalArgumentException exception) {
         return error(HttpStatus.BAD_REQUEST, exception.getMessage());
+    }
+
+    @ExceptionHandler(NoSuchElementException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public Map<String, Object> handleNotFound(NoSuchElementException exception) {
+        return error(HttpStatus.NOT_FOUND, exception.getMessage());
     }
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)

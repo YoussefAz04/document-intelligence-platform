@@ -25,7 +25,7 @@ Sources:
 
 Source citation is a core feature because it makes the system auditable and useful in real business, academic, and administrative environments.
 
-## Planned Architecture
+## Architecture
 
 ```text
 Documents
@@ -92,6 +92,15 @@ Implemented:
 - Hybrid retrieval using Reciprocal Rank Fusion
 - RAG question answering with structured source citations
 - Page-aware PDF extraction and citations
+- Angular document upload and RAG chat workspace
+- IBM Carbon Design System interface with responsive navigation
+- Interactive page-aware source detail panel
+- Per-answer retrieval and generation latency telemetry
+- Explainable RAG confidence levels derived from cited retrieval evidence
+- Citation-level semantic, keyword, and hybrid match diagnostics
+- Persistent helpful/not-helpful answer feedback
+- Aggregate answer-quality and latency statistics
+- Flyway database migrations for safe schema evolution
 
 Current API endpoints:
 
@@ -104,6 +113,8 @@ GET  /api/search/semantic?query={text}&limit={1-20}
 GET  /api/search/keyword?query={text}&limit={1-20}
 GET  /api/search/hybrid?query={text}&limit={1-20}
 POST /api/rag/ask
+PUT  /api/rag/interactions/{interactionId}/feedback
+GET  /api/rag/stats
 ```
 
 ## Project Structure
@@ -174,6 +185,7 @@ Useful SQL:
 ```sql
 SELECT * FROM documents;
 SELECT * FROM document_chunks;
+SELECT * FROM rag_interactions ORDER BY created_at DESC;
 ```
 
 ## Backend Setup
@@ -261,15 +273,48 @@ Invoke-RestMethod `
   -Body $body
 ```
 
-The answer uses inline labels such as `[S1]`. The `citations` response field
-contains the corresponding filename, page number, chunk ID, and source text.
+The answer uses inline labels such as `[S1]`. The response also includes an
+interaction ID, confidence level, retrieval/generation latency, cited source
+counts, and citation-level semantic and keyword evidence.
+
+Submit answer feedback:
+
+```powershell
+$feedback = @{ feedback = "HELPFUL" } | ConvertTo-Json
+
+Invoke-RestMethod `
+  -Uri "http://localhost:8080/api/rag/interactions/$($result.interactionId)/feedback" `
+  -Method Put `
+  -ContentType "application/json" `
+  -Body $feedback
+```
+
+Inspect aggregate RAG quality statistics:
+
+```powershell
+Invoke-RestMethod http://localhost:8080/api/rag/stats
+```
+
+## Frontend Setup
+
+The Angular frontend uses IBM Carbon styles, IBM Plex typography, and Carbon
+icons. Its development proxy forwards `/api` requests to Spring Boot on port
+8080.
+
+```powershell
+cd C:\Users\azzou\Downloads\document-intelligence-platform\frontend
+npm install
+npm start
+```
+
+Open <http://localhost:4200>.
 
 ## MVP Roadmap
 
 Next development steps:
 
-1. Build the Angular upload and chat interface.
-2. Add document deletion and re-indexing.
+1. Add document deletion and re-indexing.
+2. Add authentication and organization workspaces.
 
 ## Enterprise Features Roadmap
 
@@ -283,9 +328,8 @@ Planned advanced features:
 - Document versioning
 - Conversation history
 - Admin dashboard
-- Usage statistics
-- Feedback collection
-- RAG evaluation
+- Offline evaluation datasets and regression scoring
+- Retrieval-quality dashboards by workspace and document
 - CI/CD pipeline
 - Cloud deployment
 
@@ -321,6 +365,7 @@ This project demonstrates:
 - PostgreSQL data modeling
 - Vector search with pgvector
 - Retrieval-Augmented Generation
+- RAG observability, confidence scoring, and feedback analytics
 - Document processing pipelines
 - Authentication and authorization design
 - Docker-based local infrastructure
@@ -330,4 +375,4 @@ This project demonstrates:
 
 Enterprise AI Knowledge Platform - RAG and Semantic Search
 
-Developed a multi-service document intelligence platform supporting document ingestion, semantic search, hybrid retrieval, and RAG-based question answering with source citations. Built with Spring Boot, Angular, FastAPI, PostgreSQL, pgvector, and Docker, with a focus on permission-aware retrieval for enterprise document access.
+Developed a multi-service document intelligence platform supporting document ingestion, semantic search, hybrid retrieval, and RAG-based question answering with page-aware citations. Added retrieval diagnostics, confidence scoring, latency telemetry, persistent user feedback, and quality analytics using Spring Boot, Angular, FastAPI, PostgreSQL, pgvector, Flyway, and Docker.

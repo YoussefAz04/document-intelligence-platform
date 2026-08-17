@@ -78,6 +78,7 @@ public class DocumentService {
         List<List<Double>> embeddings = embeddingClient.createEmbeddings(chunkContents);
         documentChunkEmbeddingRepository.updateEmbeddings(chunks, embeddings);
         document.markProcessed();
+        documentRepository.saveAndFlush(document);
 
         return DocumentResponse.from(document, chunks.size());
     }

@@ -23,11 +23,15 @@ class RagServiceTests {
     @Mock
     private AnswerGenerationClient answerGenerationClient;
 
+    @Mock
+    private RagInteractionService interactionService;
+
     @InjectMocks
     private RagService ragService;
 
     @Test
     void returnsOnlyCitationsReferencedByTheGeneratedAnswer() {
+        UUID interactionId = UUID.randomUUID();
         HybridSearchResult firstSource = result("requirements.txt", 0);
         HybridSearchResult secondSource = result("calendar.txt", 1);
         when(hybridSearchService.search("What documents are required?", 5))
@@ -39,10 +43,20 @@ class RagServiceTests {
                 "test-model",
                 "Applicants need a passport and transcript [S1]."
         ));
+        when(interactionService.record(
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.any(RagTelemetry.class)
+        )).thenReturn(interactionId);
 
         RagAnswerResponse response = ragService.answer(" What documents are required? ", null);
 
         assertThat(response.model()).isEqualTo("test-model");
+        assertThat(response.interactionId()).isEqualTo(interactionId);
+        assertThat(response.telemetry().confidence()).isEqualTo(RagConfidence.HIGH);
+        assertThat(response.telemetry().retrievedSourceCount()).isEqualTo(2);
+        assertThat(response.telemetry().citedSourceCount()).isEqualTo(1);
         assertThat(response.citations()).hasSize(1);
         assertThat(response.citations().get(0).sourceId()).isEqualTo("S1");
         assertThat(response.citations().get(0).filename()).isEqualTo("requirements.txt");
@@ -51,11 +65,18 @@ class RagServiceTests {
     @Test
     void skipsGenerationWhenRetrievalFindsNothing() {
         when(hybridSearchService.search("Unknown question", 3)).thenReturn(List.of());
+        when(interactionService.record(
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.isNull(),
+                org.mockito.ArgumentMatchers.any(RagTelemetry.class)
+        )).thenReturn(UUID.randomUUID());
 
         RagAnswerResponse response = ragService.answer("Unknown question", 3);
 
         assertThat(response.model()).isNull();
         assertThat(response.citations()).isEmpty();
+        assertThat(response.telemetry().confidence()).isEqualTo(RagConfidence.LOW);
         assertThat(response.answer()).contains("could not find relevant information");
         verify(answerGenerationClient, never()).generate(
                 org.mockito.ArgumentMatchers.anyString(),

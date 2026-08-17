@@ -9,7 +9,11 @@ public record RagCitation(
         String filename,
         int chunkIndex,
         Integer pageNumber,
-        String content
+        String content,
+        double fusedScore,
+        Double semanticScore,
+        Double keywordScore,
+        SearchMatchType matchedBy
 ) {
     public static RagCitation from(String sourceId, HybridSearchResult result) {
         return new RagCitation(
@@ -19,7 +23,11 @@ public record RagCitation(
                 result.filename(),
                 result.chunkIndex(),
                 result.pageNumber(),
-                result.content()
+                result.content(),
+                result.fusedScore(),
+                result.semanticScore(),
+                result.keywordScore(),
+                result.matchedBy()
         );
     }
 }
